@@ -29,12 +29,12 @@ def TrainOptions(debug=False):
     parser.add_argument('--im_size', type=int, default=256)
     parser.add_argument('--batch_size', type=int, default=batch_size)
     parser.add_argument('--name', type=str, default='densebody_resnet_h36m')
-    parser.add_argument('--uv_map', type=str, default='radvani', choices=['radvani', 'smpl_fbx'])
+    parser.add_argument('--uv_map', type=str, default='radvani', choices=['radvani', 'radvani_new', 'smpl_fbx'])
     parser.add_argument('--num_threads', default=num_threads, type=int, help='# sthreads for loading data')
     
     # model options
     parser.add_argument('--model', type=str, default='resnet', choices=['resnet', 'vggnet', 'mobilenet'])
-    parser.add_argument('--netD', type=str, default='basic', choices=['basic'])
+    parser.add_argument('--netD', type=str, default='convres', choices=['convres', 'conv-up'])
     parser.add_argument('--nz', type=int, default=256, help='latent dims')
     parser.add_argument('--ndown', type=int, default=6, help='downsample times')
     parser.add_argument('--nchannels', type=int, default=64, help='conv channels')
@@ -45,7 +45,7 @@ def TrainOptions(debug=False):
     # training options
     parser.add_argument('--phase', type=str, default='train', choices=['train', 'test'])
     parser.add_argument('--continue_train', action='store_true')
-    parser.add_argument('--load_epoch', type=int, default=1)
+    parser.add_argument('--load_epoch', type=int, default=0)
     parser.add_argument('--epoch_count', type=int, default=1)
     parser.add_argument('--niter', type=int, default=100, help='# of iter at starting learning rate')
     parser.add_argument('--niter_decay', type=int, default=100, help='# of iter to linearly decay learning rate to zero')    
@@ -83,11 +83,11 @@ if __name__ == '__main__':
     # Change this to your gpu id.
     # The program is fixed to run on a single GPU
     if platform == 'linux':
-        os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+        os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     
     np.random.seed(9608)    
     opt = TrainOptions(debug=False)
-    dataset = DenseBodyDataset(data_root=opt.data_root, max_size=opt.max_dataset_size)
+    dataset = DenseBodyDataset(data_root=opt.data_root, uv_map=opt.uv_map, max_size=opt.max_dataset_size)
     batchs_per_epoch = len(dataset) // opt.batch_size # drop last batch
     print('#training images = %d' % len(dataset))
 
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     
     # put something in txt file
     file_log = open(os.path.join(opt.checkpoints_dir, opt.name, 'log.txt'), 'w')
-    for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
+    for epoch in range(opt.load_epoch + 1, opt.niter + opt.niter_decay + 1):
         # set loop information
         print('Epoch %d: start training' % epoch)
         np.random.shuffle(rand_perm)
