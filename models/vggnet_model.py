@@ -23,8 +23,10 @@ class VGGNetModel(BaseModel):
             norm = opt.norm, nl=opt.nl, init_type=opt.init_type, device=self.device)
         
         if opt.phase == 'train':
-            self.L1_loss = networks.WeightedL1Loss(opt.uv_map, self.device)  # requires a weight npy
-            self.TV_loss = networks.TotalVariationLoss(opt.uv_map, self.device)
+            self.L1_loss = networks.WeightedL1Loss(opt.uv_prefix, self.device)  # requires a weight npy
+            self.TV_loss = networks.TotalVariationLoss(opt.uv_prefix, self.device)
+            self.encoder.train()
+            self.decoder.train()
             
             self.optimizers = []
             self.optimizer_enc = torch.optim.Adam(self.encoder.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -32,10 +34,9 @@ class VGGNetModel(BaseModel):
             
             self.optimizer_dec = torch.optim.Adam(self.decoder.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizers.append(self.optimizer_dec)
-    
-    def set_input(self, input):
-        self.real_input = input['im_data']
-        self.real_UV = input['uv_data']
+        else:
+            self.encoder.eval()
+            self.decoder.eval()
     
     '''
         forward: Train one step, return loss calues
@@ -62,9 +63,11 @@ class VGGNetModel(BaseModel):
     
     def get_current_visuals(self):
         # return: real image, real UV maps fake UV maps
-        return {
+        visuals = {
             'real_image': self.real_input[0],
-            'real_UV': self.real_UV[0],
             'fake_UV': self.fake_UV[0]
         }
+        if not self.opt.phase == 'in_the_wild':
+            visuals['real_UV'] = self.real_UV[0]
+        return visuals 
         
